@@ -1,11 +1,10 @@
 // import './style.css'
 // import javascriptLogo from './javascript.svg'
-// const express = require('express')
 // import router from './routes/user.routes.js'
 // import https from "https"
 
 import express from 'express'
-import fs from "fs"
+import fs from "fs/promises"
 import formidable from 'formidable'
 
 const app = express()
@@ -33,7 +32,7 @@ app.get("/upload", (req, res) => {
         <form method="post" enctype="multipart/form-data">
           <p>Приветули!Выберите файл!</p>
           <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-          <input type="submit">
+          <input type="submit" value="Upload">
         </form>
       </body>
     </html>
@@ -68,19 +67,10 @@ app.get('/path', (req, res) => {
 })
 
 let nn = await directoryRider()
-app.get('/list', (req, res) => {
-  let filesNameArray = []  
-  fs.readdir(process.cwd() + '/public', (err, files) => {
-    if (err) {
-      console.log(err)
-      return filesNameArray
-    } else {
-      files.forEach(file => {
-        filesNameArray.push(file)
-      })
-      res.send({names: filesNameArray})
-    }
-  })
+app.get('/list', async (req, res) => {
+  const rr = await directoryRider()
+  console.log(rr)
+  res.send(rr)
 })
 
 app.get('/*', (req, res) => {
@@ -101,28 +91,38 @@ app.post('/upload', (req, res) => {
 
   const form = new formidable.IncomingForm()
   form.parse(req, function (err, fields, files) {
-    // console.log(files)
-    const oldpath = files.filename.filepath
-    console.log(oldpath)
-    const newpath = process.cwd() + '/public/' + files.filename.originalFilename
-    console.log(newpath)
-    fs.rename(oldpath, newpath, function (err) {
-      if (err) throw err
-      res.send(`
-        <html>
-          <header>
-          </header>
-          <body>
-            <form method="post" enctype="multipart/form-data">
-              <p>Файл загружен! Загрузить еще?</p>
-              <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-              <input type="submit">
-            </form>
-          </body>
-        </html>
-      `)
-      // res.end()
-    })
+    console.log(files)
+    const template = `
+      <html>
+        <header>
+        </header>
+        <body>
+          <form method="post" enctype="multipart/form-data">
+            <p>Файл загружен! Загрузить еще?</p>
+            <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
+            <input type="submit" value="Upload">
+          </form>
+        </body>
+      </html>
+    `
+    if (files.filename.size) {
+      const oldpath = files.filename.filepath
+      console.log(oldpath)
+      const newpath = process.cwd() + '/public/' + files.filename.originalFilename
+      console.log(newpath)
+
+      fs.copyFile(oldpath, newpath, 0, function (err) {
+        if (err) throw err
+      }).then(async () => {
+        const list = await directoryRider()
+        res.send(template + arrayToList(list))
+      })
+    } else { res.send('Файл не выбран!') }
+
+    // fs.rename(oldpath, newpath, function (err) {
+    //   if (err) throw err
+    //   res.send(template)
+    // })
       // res.write('File uploaded and moved!');
       // res.end()
   })
@@ -134,19 +134,36 @@ app.listen(PORT, () => {
 })
 
 async function directoryRider () {
-  let filesNameArray = []  
-  fs.readdir(process.cwd() + '/public', (err, files) => {
-    if (err) {
-      console.log(err)
-      return filesNameArray
-    } else {
-      // console.log("\nCurrent directory filenames:")
-      files.forEach(file => {
-        filesNameArray.push(file)
-        // console.log(file)
-      })
-      // console.log(filesNameArray)
-      return filesNameArray
-    }
+  // let filesNameArray = []  
+  return await fs.readdir(process.cwd() + '/public', (err, files) => {
+    if (err) console.log(err)
   })
+  // fs.readdir(process.cwd() + '/public', async (err, files) => {
+  //   if (err) {
+  //     console.log(err)
+  //     return filesNameArray
+  //   } else {
+  //     // console.log("\nCurrent directory filenames:")
+  //     files.forEach(file => {
+  //       filesNameArray.push(file)
+  //       // console.log(file)
+  //     })
+  //     // console.log(filesNameArray)
+  //     return filesNameArray
+  //   }
+  // })
+  // return filesNameArray
+}
+
+function arrayToList (arr = []) {
+  const list = []
+  arr.forEach(element => {
+    list.push(`<li>${element}</li>`)
+  })
+  if (list.length) {
+    return `<ul>${
+      list.join(' ')
+    }</ul>`
+  }
+  return
 }
