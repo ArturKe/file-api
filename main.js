@@ -31,6 +31,7 @@ app.get("/upload", (req, res) => {
       <body>
         <form method="post" enctype="multipart/form-data">
           <p>Приветули!Выберите файл!</p>
+          <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
           <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
           <input type="submit" value="Upload">
         </form>
@@ -40,6 +41,7 @@ app.get("/upload", (req, res) => {
 })
 
 app.use(express.json())
+app.use(express.static('public'))
 
 // // Middelware, voor alle /api/* request
 // app.all('/api/*', function(req, res, next) 
@@ -57,9 +59,12 @@ app.use(express.json())
 
 console.log(await directoryRider())
 
-app.use('/api', (req, res) => {
-  // res.send('API')
-  res.sendFile(process.cwd() + '/public/vite.svg')
+app.get('/download', (req, res) => {
+  const path = process.cwd() + '/public/' + req.query.name
+  console.log(path)
+  res.send(`<img style='max-width: 100%' src='/${req.query.name}'>`);
+  // if (req.query.name) res.sendFile(process.cwd() + `/public/${req.query.name}`)
+  // res.sendFile(process.cwd() + '/public/vite.svg')
 })
 
 app.get('/path', (req, res) => {
@@ -71,10 +76,6 @@ app.get('/list', async (req, res) => {
   const rr = await directoryRider()
   console.log(rr)
   res.send(rr)
-})
-
-app.get('/*', (req, res) => {
-	res.send('НИЧЕГО НЕ НАЙДЕНО!!!')
 })
 
 app.post('/upload', (req, res) => {
@@ -99,13 +100,14 @@ app.post('/upload', (req, res) => {
         <body>
           <form method="post" enctype="multipart/form-data">
             <p>Файл загружен! Загрузить еще?</p>
+            <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
             <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
             <input type="submit" value="Upload">
           </form>
         </body>
       </html>
     `
-    if (files.filename.size) {
+    if (files.filename.size && ['image/jpeg', 'image/svg+xml', 'image/gif', 'image/png'].includes(files.filename.mimetype)) {
       const oldpath = files.filename.filepath
       console.log(oldpath)
       const newpath = process.cwd() + '/public/' + files.filename.originalFilename
@@ -117,7 +119,7 @@ app.post('/upload', (req, res) => {
         const list = await directoryRider()
         res.send(template + arrayToList(list))
       })
-    } else { res.send('Файл не выбран!') }
+    } else { res.send('Файл не выбран! Доступна загрузка файлов: PNG, JPG, GIF, SVG') }
 
     // fs.rename(oldpath, newpath, function (err) {
     //   if (err) throw err
@@ -126,6 +128,21 @@ app.post('/upload', (req, res) => {
       // res.write('File uploaded and moved!');
       // res.end()
   })
+})
+
+app.get('/*', async (req, res) => {
+  const list = await directoryRider()
+	res.send(`
+    <html>
+      <header>
+      </header>
+      <body>
+          <p>Добро пожаловать на Файл Сервер!</p>
+          <p>Приветули!Выберите файл!</p>
+          <p><a href="/upload">Загрузить файл</a></p>
+      </body>
+    </html>
+  ` + arrayToList(list))
 })
 
 app.listen(PORT, () => {
@@ -158,10 +175,10 @@ async function directoryRider () {
 function arrayToList (arr = []) {
   const list = []
   arr.forEach(element => {
-    list.push(`<li>${element}</li>`)
+    list.push(`<a href='/download?name=${element}'><li>${element}</li></a>`)
   })
   if (list.length) {
-    return `<ul>${
+    return `<br><p>Список файлов:</p><ul>${
       list.join(' ')
     }</ul>`
   }
