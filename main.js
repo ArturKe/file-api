@@ -15,7 +15,9 @@ const PORT = process.env.PORT || 3000
 console.log('This is URL: ' + process.env.URL)
 
 import os from "os"
-console.log("Home directory:" + os.homedir())
+console.log("Home directory: " + os.homedir())
+console.log("Host name: " + os.hostname())
+
 
 // app.use(express.static('dist'));
 
@@ -23,21 +25,16 @@ app.get("/help", (req, res) => {
 	res.send("Here is some HELP: " + process.env.URL_REMOTE)
 })
 
-app.get("/upload", (req, res) => {
-	res.send(`
-    <html>
-      <header>
-      </header>
-      <body>
-        <form method="post" enctype="multipart/form-data">
-          <p>Приветули!Выберите файл!</p>
-          <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
-          <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-          <input type="submit" value="Upload">
-        </form>
-      </body>
-    </html>
-  `)
+app.get("/upload", async(req, res) => {
+  const bodyTemplate = `
+    <form method="post" enctype="multipart/form-data">
+      <p>Приветули!Выберите файл!</p>
+      <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
+      <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
+      <input type="submit" value="Upload">
+    </form>
+  `
+	res.send(mainTemplate(bodyTemplate + arrayToList(await directoryRider())))
 })
 
 app.use(express.json())
@@ -62,9 +59,8 @@ console.log(await directoryRider())
 app.get('/download', (req, res) => {
   const path = process.cwd() + '/public/' + req.query.name
   console.log(path)
-  res.send(`<img style='max-width: 100%' src='/${req.query.name}'>`);
+  res.send(`<img style='max-height: 100%; max-width: 100%' src='/${req.query.name}'>`);
   // if (req.query.name) res.sendFile(process.cwd() + `/public/${req.query.name}`)
-  // res.sendFile(process.cwd() + '/public/vite.svg')
 })
 
 app.get('/path', (req, res) => {
@@ -79,6 +75,8 @@ app.get('/list', async (req, res) => {
 })
 
 app.post('/upload', (req, res) => {
+  console.log('Host Name req: ' + req.hostname)
+  console.log('Host Name Header req: ' + req.header("host"))
   // console.log(req.url)
 
   // const form = formidable({});
@@ -90,22 +88,24 @@ app.post('/upload', (req, res) => {
   //   res.json({ fields, files })
   // })
 
+  //Create an instance of the form object
   const form = new formidable.IncomingForm()
+  // form.on('progress', (bytesReceived, bytesExpected) => {})
+  // form.on('file', (formname, file) => {
+  //   // same as fileBegin, except
+  //   // it is too late to change file.filepath
+  //   // file.hash is available if options.hash was used
+  // })
   form.parse(req, function (err, fields, files) {
     console.log(files)
+
     const template = `
-      <html>
-        <header>
-        </header>
-        <body>
-          <form method="post" enctype="multipart/form-data">
-            <p>Файл загружен! Загрузить еще?</p>
-            <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
-            <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-            <input type="submit" value="Upload">
-          </form>
-        </body>
-      </html>
+      <form method="post" enctype="multipart/form-data">
+        <p>Файл загружен! Загрузить еще?</p>
+        <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
+        <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
+        <input type="submit" value="Upload">
+      </form>
     `
     if (files.filename.size && ['image/jpeg', 'image/svg+xml', 'image/gif', 'image/png'].includes(files.filename.mimetype)) {
       const oldpath = files.filename.filepath
@@ -117,14 +117,10 @@ app.post('/upload', (req, res) => {
         if (err) throw err
       }).then(async () => {
         const list = await directoryRider()
-        res.send(template + arrayToList(list))
+        res.send(mainTemplate(template + arrayToList(list)))
       })
     } else { res.send('Файл не выбран! Доступна загрузка файлов: PNG, JPG, GIF, SVG') }
 
-    // fs.rename(oldpath, newpath, function (err) {
-    //   if (err) throw err
-    //   res.send(template)
-    // })
       // res.write('File uploaded and moved!');
       // res.end()
   })
@@ -132,17 +128,12 @@ app.post('/upload', (req, res) => {
 
 app.get('/*', async (req, res) => {
   const list = await directoryRider()
-	res.send(`
-    <html>
-      <header>
-      </header>
-      <body>
-          <p>Добро пожаловать на Файл Сервер!</p>
-          <p>Приветули!Выберите файл!</p>
-          <p><a href="/upload">Загрузить файл</a></p>
-      </body>
-    </html>
-  ` + arrayToList(list))
+  const bodyTemplate = `
+    <h2>Добро пожаловать на Файл Сервер!</h2>
+    <p>Приветули!Выберите файл!</p>
+    <p><a href="/upload">Загрузить файл</a></p>
+  `
+	res.send(mainTemplate(bodyTemplate + arrayToList(list)))
 })
 
 app.listen(PORT, () => {
@@ -183,4 +174,23 @@ function arrayToList (arr = []) {
     }</ul>`
   }
   return
+}
+
+function mainTemplate (content = '') {
+  return `
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>File server</title>
+      </head>
+      <body style="margin: 0">
+          <div style="width:100%; padding: 0 15px; background:#527cb3; display: flex; flex-direction: row; gap: 15px;">
+            <div>
+              <a href="/"><h3 style="color: #f0ffff">File Server</h3></a>
+            </div>
+          </div>
+          <div style="padding: 10px">${content}</div>
+      </body>
+    </html>
+  `
 }
