@@ -10,11 +10,12 @@ import formidable from 'formidable'
 const app = express()
 
 import WebSocket, { WebSocketServer } from 'ws'
-const wsServer = new WebSocketServer({port: 443})
-console.log(WebSocket)
+const wss = new WebSocketServer({port: 443})
+console.log(wss.clients)
 
-wsServer.on('connection', function connection(ws) {
+wss.on('connection', function connection(ws) {
   console.log('WS Соединение установлено!')
+  console.log(wss.clients)
   ws.on('error', console.error)
 
   ws.on('message', function message(data) {
@@ -25,6 +26,7 @@ wsServer.on('connection', function connection(ws) {
   }, 2000)
   
 })
+wss.on('upgrade', () => {console.log('Upgrade')})
 
 
 // const useRouter = require('./routes/user.routes')
@@ -107,7 +109,7 @@ app.get('/socket', (req, res) => {
       sendMessageButton.addEventListener('click', sendMessage)
 
       function wsConnect () {
-        wsConnection = new WebSocket("wss://${process.env.HOST || 'localhost'}:443")
+        wsConnection = new WebSocket("wss://${process.env.HOST || 'localhost'}")
         changeStatus(2)
         wsConnection.onopen = function() {
           console.log("Соединение установлено.")
