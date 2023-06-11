@@ -8,7 +8,7 @@ import fs from "fs/promises"
 import formidable from 'formidable'
 
 import WebSocket, { WebSocketServer } from 'ws'
-const wsServer = new WebSocketServer({port: 9000})
+const wsServer = new WebSocketServer({port: 8080})
 console.log(WebSocket)
 
 wsServer.on('connection', function connection(ws) {
@@ -105,7 +105,7 @@ app.get('/socket', (req, res) => {
       sendMessageButton.addEventListener('click', sendMessage)
 
       function wsConnect () {
-        wsConnection = new WebSocket("ws://${process.env.HOST || 'localhost'}:9000")
+        wsConnection = new WebSocket("wss://${process.env.HOST || 'localhost'}")
         changeStatus(2)
         wsConnection.onopen = function() {
           console.log("Соединение установлено.")
