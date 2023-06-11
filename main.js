@@ -7,8 +7,10 @@ import express from 'express'
 import fs from "fs/promises"
 import formidable from 'formidable'
 
+const app = express()
+
 import WebSocket, { WebSocketServer } from 'ws'
-const wsServer = new WebSocketServer({port: 8080})
+const wsServer = new WebSocketServer({port: 443})
 console.log(WebSocket)
 
 wsServer.on('connection', function connection(ws) {
@@ -24,7 +26,7 @@ wsServer.on('connection', function connection(ws) {
   
 })
 
-const app = express()
+
 // const useRouter = require('./routes/user.routes')
 
 const PORT = process.env.PORT || 3000
@@ -105,7 +107,7 @@ app.get('/socket', (req, res) => {
       sendMessageButton.addEventListener('click', sendMessage)
 
       function wsConnect () {
-        wsConnection = new WebSocket("wss://${process.env.HOST || 'localhost'}")
+        wsConnection = new WebSocket("wss://${process.env.HOST || 'localhost'}:443")
         changeStatus(2)
         wsConnection.onopen = function() {
           console.log("Соединение установлено.")
