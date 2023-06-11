@@ -7,12 +7,30 @@ import express from 'express'
 import fs from "fs/promises"
 import formidable from 'formidable'
 
+import WebSocket, { WebSocketServer } from 'ws'
+const wsServer = new WebSocketServer({port: 9000})
+console.log(WebSocket)
+
+wsServer.on('connection', function connection(ws) {
+  console.log('WS Соединение установлено!')
+  ws.on('error', console.error)
+
+  ws.on('message', function message(data) {
+    console.log('received: %s', data)
+  })
+  setInterval(() => {
+    ws.send('something' + Math.round(Math.random()*2000))
+  }, 2000)
+  
+})
+
 const app = express()
 // const useRouter = require('./routes/user.routes')
 
 const PORT = process.env.PORT || 3000
 // console.log(process.env)
 console.log('This is URL: ' + process.env.URL)
+console.log('This is HOST: ' + process.env.HOST)
 
 import os from "os"
 console.log("Home directory: " + os.homedir())
@@ -31,7 +49,7 @@ app.get("/upload", async(req, res) => {
       <p>Приветули!Выберите файл!</p>
       <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
       <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-      <input type="submit" value="Upload">
+      <input class="button" type="submit" value="Upload">
     </form>
   `
 	res.send(mainTemplate(bodyTemplate + arrayToList(await directoryRider())))
@@ -56,10 +74,83 @@ app.use(express.static('public'))
 
 console.log(await directoryRider())
 
+app.get('/socket', (req, res) => {
+  const bodyTemplate = `
+    <div>
+      <h2>Sockets</h2>
+      <div>Здесь будет тестирование сокетов</div>
+      <br>
+      <div class="buttons">
+        <div class="status disconnected"></div>
+        <button class="button connect">Connect web socket</button>
+        <button class="button disconnect">Disconnect web socket</button>
+      </div>
+      <br>
+      <div>
+        <button class="wsButton sendMessage">Send Message</button>
+      </div>
+    </div>
+  `
+  const scriptTemplate = `
+    <script>
+      let wsConnection
+      let connected = false
+      const connectButton = document.querySelector('.connect')
+      const disconnectButton = document.querySelector('.disconnect')
+      const sendMessageButton = document.querySelector('.sendMessage')
+      const status = document.querySelector('.status')
+
+      connectButton.addEventListener('click', wsConnect)
+      disconnectButton.addEventListener('click', () => {if (wsConnection) wsConnection.close() })
+      sendMessageButton.addEventListener('click', sendMessage)
+
+      function wsConnect () {
+        wsConnection = new WebSocket("ws://${process.env.HOST || 'localhost'}:9000")
+        changeStatus(2)
+        wsConnection.onopen = function() {
+          console.log("Соединение установлено.")
+          changeStatus(0)
+          connected = true
+        }
+
+        wsConnection.onclose = function(event) {
+          if (event.wasClean) {
+            console.log('Соединение закрыто чисто')
+            changeStatus(1)
+            connected = false
+          } else {
+            console.log('Обрыв соединения') // например, "убит" процесс сервера
+            changeStatus(1)
+            connected = false
+          }
+          console.log('Код: ' + event.code + ' причина: ' + event.reason)
+        }
+
+        wsConnection.onmessage = function(event) {
+          console.log('Получены данные: ' + event.data);
+        }
+      }
+
+      function sendMessage () {
+        if (connected) wsConnection.send('Hello from Client!');
+      }
+
+      function changeStatus (st = 0) {
+        const allSt = {0: 'connected', 1: 'disconnected', 2: 'connecting'}
+        status.className=''
+        status.classList.add('status')
+        status.classList.add(allSt[st] ? allSt[st] : allSt[1])
+        return
+      }
+    </script>
+  `
+  res.send(mainTemplate(bodyTemplate + scriptTemplate))
+})
+
 app.get('/download', (req, res) => {
   const path = process.cwd() + '/public/' + req.query.name
   console.log(path)
-  res.send(`<img style='max-height: 100%; max-width: 100%' src='/${req.query.name}'>`);
+  res.send(`<img style='max-height: 100%; max-width: 100%' src='/${req.query.name}'>`)
   // if (req.query.name) res.sendFile(process.cwd() + `/public/${req.query.name}`)
 })
 
@@ -104,7 +195,7 @@ app.post('/upload', (req, res) => {
         <p>Файл загружен! Загрузить еще?</p>
         <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
         <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-        <input type="submit" value="Upload">
+        <input class="button" type="submit" value="Upload">
       </form>
     `
     if (files.filename.size && ['image/jpeg', 'image/svg+xml', 'image/gif', 'image/png'].includes(files.filename.mimetype)) {
@@ -119,7 +210,7 @@ app.post('/upload', (req, res) => {
         const list = await directoryRider()
         res.send(mainTemplate(template + arrayToList(list)))
       })
-    } else { res.send('Файл не выбран! Доступна загрузка файлов: PNG, JPG, GIF, SVG') }
+    } else { res.send(mainTemplate('Файл не выбран! Доступна загрузка файлов: PNG, JPG, GIF, SVG')) }
 
       // res.write('File uploaded and moved!');
       // res.end()
@@ -181,12 +272,15 @@ function mainTemplate (content = '') {
     <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>File server</title>
+        <link href="/style.css" rel="stylesheet">
       </head>
       <body style="margin: 0">
           <div style="width:100%; padding: 0 15px; background:#527cb3; display: flex; flex-direction: row; gap: 15px;">
-            <div>
+            <div class="header">
               <a href="/"><h3 style="color: #f0ffff">File Server</h3></a>
+              <a href="/socket"><h3 style="color: #f0ffff">Socket test</h3></a>
             </div>
           </div>
           <div style="padding: 10px">${content}</div>
