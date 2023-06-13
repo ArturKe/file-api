@@ -235,7 +235,7 @@ app.post('/upload', (req, res) => {
         <input class="button" type="submit" value="Upload">
       </form>
     `
-    if (files.filename.size && ['image/jpeg', 'image/svg+xml', 'image/gif', 'image/png'].includes(files.filename.mimetype)) {
+    if (files.filename.size && ['image/jpeg', 'image/svg+xml', 'image/gif', 'image/png', 'model/gltf-binary', 'model/obj'].includes(files.filename.mimetype)) {
       const oldpath = files.filename.filepath
       console.log(oldpath)
       const newpath = process.cwd() + '/public/' + files.filename.originalFilename
