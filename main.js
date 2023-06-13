@@ -129,8 +129,8 @@ app.get('/socket', (req, res) => {
   `
   const scriptTemplate = `
     <script>
-      let sock = new SockJS('http://localhost:3000/echo');
-      // let sock = new SockJS('https://${process.env.HOST}/echo');
+      // let sock = new SockJS('http://localhost:3000/echo');
+      let sock = new SockJS('https://${process.env.HOST}/echo');
       console.log(sock)
       sock.onopen = function() {
           console.log('open')
