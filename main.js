@@ -59,23 +59,19 @@ console.log("Host name: " + os.hostname())
 
 // app.use(express.static('dist'));
 
-app.get("/help", (req, res) => {
-	res.send("Here is some HELP: " + process.env.URL_REMOTE)
-})
-
-app.get("/upload", async(req, res) => {
-  const bodyTemplate = `
-    <form method="post" enctype="multipart/form-data">
-      <p>Приветули!Выберите файл!</p>
-      <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
-      <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-      <input class="button" type="submit" value="Upload">
-    </form>
-  `
-	res.send(mainTemplate(bodyTemplate + arrayToList(await directoryRider())))
-})
-
 app.use(express.json())
+app.use(function(req, res, next) {
+  res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
+  res.header('Access-Control-Expose-Headers', 'Content-Length');
+  res.header('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type, X-Requested-With, Range');
+  if (req.method === 'OPTIONS') {
+    return res.send(200);
+  } else {
+    return next();
+  }
+})
 app.use(express.static('public'))
 
 // // Middelware, voor alle /api/* request
@@ -93,6 +89,22 @@ app.use(express.static('public'))
 // });
 
 console.log(await directoryRider())
+
+app.get("/help", (req, res) => {
+	res.send("Here is some HELP: " + process.env.URL_REMOTE)
+})
+
+app.get("/upload", async(req, res) => {
+  const bodyTemplate = `
+    <form method="post" enctype="multipart/form-data">
+      <p>Приветули!Выберите файл!</p>
+      <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
+      <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
+      <input class="button" type="submit" value="Upload">
+    </form>
+  `
+	res.send(mainTemplate(bodyTemplate + arrayToList(await directoryRider())))
+})
 
 app.get('/socket', (req, res) => {
   const bodyTemplate = `
@@ -187,8 +199,8 @@ app.get('/socket', (req, res) => {
 app.get('/download', (req, res) => {
   const path = process.cwd() + '/public/' + req.query.name
   console.log(path)
-  res.send(`<img style='max-height: 100%; max-width: 100%' src='/${req.query.name}'>`)
-  // if (req.query.name) res.sendFile(process.cwd() + `/public/${req.query.name}`)
+  // res.send(`<img style='max-height: 100%; max-width: 100%' src='/${req.query.name}'>`)
+  if (req.query.name) res.sendFile(process.cwd() + `/public/${req.query.name}`)
 })
 
 app.get('/path', (req, res) => {
