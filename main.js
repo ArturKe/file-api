@@ -8,9 +8,16 @@ import fs from "fs/promises"
 import formidable from 'formidable'
 import sockjs from 'sockjs'
 
+const PORT = process.env.PORT || 3000
+// console.log(process.env)
+console.log('This is URL: ' + process.env.URL)
+console.log('This is HOST: ' + process.env.HOST)
+
 const app = express()
-const server = http.createServer()
-console.log(server)
+const server = http.createServer(app).listen(PORT, () => {
+  console.log('First server started')
+})
+console.log(app)
 
 // import WebSocket, { WebSocketServer } from 'ws'
 // const wss = new WebSocketServer({port: 443})
@@ -30,7 +37,7 @@ console.log(server)
   
 // })
 
-const echo = sockjs.createServer()
+const echo = sockjs.createServer({ prefix:'/echo' })
 echo.on('connection', function(conn) {
   console.log('Connection')
   conn.on('data', function(message) {
@@ -41,16 +48,13 @@ echo.on('connection', function(conn) {
 })
 // console.log(echo)
 // echo.attach(app)
+
+// echo.installHandlers(app, { prefix:'/echo' })
 echo.installHandlers(server, { prefix:'/echo' })
-server.listen(80, '0.0.0.0')
+// server.listen(80, '0.0.0.0')
 
 
 // const useRouter = require('./routes/user.routes')
-
-const PORT = process.env.PORT || 3000
-// console.log(process.env)
-console.log('This is URL: ' + process.env.URL)
-console.log('This is HOST: ' + process.env.HOST)
 
 import os from "os"
 console.log("Home directory: " + os.homedir())
@@ -125,8 +129,8 @@ app.get('/socket', (req, res) => {
   `
   const scriptTemplate = `
     <script>
-      // let sock = new SockJS('http://localhost:3001/echo');
-      let sock = new SockJS('https://${process.env.HOST}/echo');
+      let sock = new SockJS('http://localhost:3000/echo');
+      // let sock = new SockJS('https://${process.env.HOST}/echo');
       console.log(sock)
       sock.onopen = function() {
           console.log('open')
@@ -277,10 +281,10 @@ app.get('/*', async (req, res) => {
 	res.send(mainTemplate(bodyTemplate + arrayToList(list)))
 })
 
-app.listen(PORT, () => {
-	console.log("Started api service on port: " + PORT)
-  console.log("Current directory:", process.cwd())
-})
+// app.listen(PORT, () => {
+// 	console.log("Started api service on port: " + PORT)
+//   console.log("Current directory:", process.cwd())
+// })
 
 async function directoryRider () {
   // let filesNameArray = []  
