@@ -42,7 +42,7 @@ echo.on('connection', function(conn) {
 // console.log(echo)
 // echo.attach(app)
 echo.installHandlers(server, { prefix:'/echo' })
-server.listen(443, '0.0.0.0')
+server.listen(80, '0.0.0.0')
 
 
 // const useRouter = require('./routes/user.routes')
