@@ -1,32 +1,48 @@
 // import './style.css'
 // import javascriptLogo from './javascript.svg'
 // import router from './routes/user.routes.js'
-// import https from "https"
+import http from "http"
 
 import express from 'express'
 import fs from "fs/promises"
 import formidable from 'formidable'
+import sockjs from 'sockjs'
 
 const app = express()
+const server = http.createServer()
+console.log(server)
 
-import WebSocket, { WebSocketServer } from 'ws'
-const wss = new WebSocketServer({port: 443})
-console.log(wss.clients)
+// import WebSocket, { WebSocketServer } from 'ws'
+// const wss = new WebSocketServer({port: 443})
+// console.log(wss.clients)
 
-wss.on('connection', function connection(ws) {
-  console.log('WS Соединение установлено!')
-  console.log(wss.clients)
-  ws.on('error', console.error)
+// wss.on('connection', function connection(ws) {
+//   console.log('WS Соединение установлено!')
+//   console.log(wss.clients)
+//   ws.on('error', console.error)
 
-  ws.on('message', function message(data) {
-    console.log('received: %s', data)
-  })
-  setInterval(() => {
-    ws.send('something' + Math.round(Math.random()*2000))
-  }, 2000)
+//   ws.on('message', function message(data) {
+//     console.log('received: %s', data)
+//   })
+//   setInterval(() => {
+//     ws.send('something' + Math.round(Math.random()*2000))
+//   }, 2000)
   
+// })
+
+const echo = sockjs.createServer()
+echo.on('connection', function(conn) {
+  console.log('Connection')
+  conn.on('data', function(message) {
+    console.log('Data')
+    conn.write(message)
+  })
+  conn.on('close', function() {console.log('close')});
 })
-wss.on('upgrade', () => {console.log('Upgrade')})
+// console.log(echo)
+// echo.attach(app)
+echo.installHandlers(server, { prefix:'/echo' })
+server.listen(9999, '0.0.0.0')
 
 
 // const useRouter = require('./routes/user.routes')
@@ -97,6 +113,23 @@ app.get('/socket', (req, res) => {
   `
   const scriptTemplate = `
     <script>
+      // let sock = new SockJS('http://localhost:3001/echo');
+      let sock = new SockJS('https://${process.env.HOST}/echo');
+      console.log(sock)
+      sock.onopen = function() {
+          console.log('open')
+          sock.send('test')
+      }
+    
+      sock.onmessage = function(e) {
+          console.log('message', e.data)
+          sock.close()
+      }
+    
+      sock.onclose = function() {
+          console.log('close')
+      }
+
       let wsConnection
       let connected = false
       const connectButton = document.querySelector('.connect')
@@ -279,6 +312,7 @@ function mainTemplate (content = '') {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>File server</title>
         <link href="/style.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
       </head>
       <body style="margin: 0">
           <div style="width:100%; padding: 0 15px; background:#527cb3; display: flex; flex-direction: row; gap: 15px;">
