@@ -40,19 +40,23 @@ console.log(app)
 const echo = sockjs.createServer({ prefix:'/echo' })
 echo.on('connection', function(conn) {
   console.log('Connection')
+  let interval
+
   conn.on('data', function(message) {
-    console.log('Data')
+    console.log('Data from client: ' + message)
     conn.write(message)
   })
-  conn.on('close', function() {console.log('close')});
+
+  interval = setInterval(() => {
+    conn.write('something' + Math.round(Math.random()*2000))
+  }, 2000)
+
+  conn.on('close', function() {
+    clearInterval(interval)
+    console.log('close')
+  })
 })
-// console.log(echo)
-// echo.attach(app)
-
-// echo.installHandlers(app, { prefix:'/echo' })
 echo.installHandlers(server, { prefix:'/echo' })
-// server.listen(80, '0.0.0.0')
-
 
 // const useRouter = require('./routes/user.routes')
 
@@ -130,22 +134,7 @@ app.get('/socket', (req, res) => {
   const scriptTemplate = `
     <script>
       // let sock = new SockJS('http://localhost:3000/echo');
-      let sock = new SockJS('https://${process.env.HOST}/echo');
-      console.log(sock)
-      sock.onopen = function() {
-          console.log('open')
-          sock.send('test')
-      }
-    
-      sock.onmessage = function(e) {
-          console.log('message', e.data)
-          sock.close()
-      }
-    
-      sock.onclose = function() {
-          console.log('close')
-      }
-
+      let sock
       let wsConnection
       let connected = false
       const connectButton = document.querySelector('.connect')
@@ -153,9 +142,34 @@ app.get('/socket', (req, res) => {
       const sendMessageButton = document.querySelector('.sendMessage')
       const status = document.querySelector('.status')
 
-      connectButton.addEventListener('click', wsConnect)
-      disconnectButton.addEventListener('click', () => {if (wsConnection) wsConnection.close() })
+      connectButton.addEventListener('click', () => { if (!connected) connectSocket() })
+      disconnectButton.addEventListener('click', disconnectSocket)
       sendMessageButton.addEventListener('click', sendMessage)
+
+      function disconnectSocket () {
+        if (wsConnection) wsConnection.close()
+        if (sock) sock.close()
+      }
+      function connectSocket () {
+        sock = new SockJS('${process.env.HOST ? 'https://' + process.env.HOST + '/echo' : 'http://localhost:3000/echo'}');
+        sock.onopen = function() {
+          changeStatus(0)
+          connected = true
+          console.log('Connection open')
+          sock.send('test')
+        }
+      
+        sock.onmessage = function(e) {
+          console.log('Message from server: ', e.data)
+          // sock.close()
+        }
+      
+        sock.onclose = function() {
+          changeStatus(1)
+          connected = false
+          console.log('Connection close')
+        }
+      }
 
       function wsConnect () {
         wsConnection = new WebSocket("wss://${process.env.HOST || 'localhost'}")
@@ -185,7 +199,8 @@ app.get('/socket', (req, res) => {
       }
 
       function sendMessage () {
-        if (connected) wsConnection.send('Hello from Client!');
+        if (connected && wsConnection) wsConnection.send('Hello from Client!');
+        if (connected && sock) sock.send('Lalala Tralala')
       }
 
       function changeStatus (st = 0) {
