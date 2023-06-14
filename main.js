@@ -17,43 +17,37 @@ const app = express()
 const server = http.createServer(app).listen(PORT, () => {
   console.log('First server started')
 })
-console.log(app)
-
-// import WebSocket, { WebSocketServer } from 'ws'
-// const wss = new WebSocketServer({port: 443})
-// console.log(wss.clients)
-
-// wss.on('connection', function connection(ws) {
-//   console.log('WS Соединение установлено!')
-//   console.log(wss.clients)
-//   ws.on('error', console.error)
-
-//   ws.on('message', function message(data) {
-//     console.log('received: %s', data)
-//   })
-//   setInterval(() => {
-//     ws.send('something' + Math.round(Math.random()*2000))
-//   }, 2000)
-  
-// })
 
 const echo = sockjs.createServer({ prefix:'/echo' })
+let clients = []
+let clientNames = {}
+
 echo.on('connection', function(conn) {
   console.log('Connection')
-  let interval
+  // Посылаем ID нового пользователяy
+  const name = `Client${Math.round(Math.random()*1000)}`
+  conn.write('Your name is: ' + name)
+  clientNames[conn.id] = name
+  
+  // Сообщаем всем пользователям о коннекте новго
+  clients.forEach(client => client.connect.write(name + ' connected!'))
+  clients.push({name, id:conn.id, connect:conn})
+  console.log(clients)
 
   conn.on('data', function(message) {
-    console.log('Data from client: ' + message)
-    conn.write(message)
+    console.log('ID: ' + conn.id)
+    console.log('Data from ' + clientNames[conn.id] + ': ' + message)
+
+    // Broadcast messages to other clients
+    clients.forEach(client => client.connect.write(clientNames[conn.id]+ ':: ' + message))
   })
 
-  interval = setInterval(() => {
-    conn.write('something' + Math.round(Math.random()*2000))
-  }, 2000)
+  // conn.write('something' + Math.round(Math.random()*1000))
 
-  conn.on('close', function() {
-    clearInterval(interval)
-    console.log('close')
+  conn.on('close', function(ev) {
+    console.log('close: ' + conn.id)
+    clients = clients.filter(client => client.id !== conn.id)
+    console.log(clients)
   })
 })
 echo.installHandlers(server, { prefix:'/echo' })
@@ -127,7 +121,10 @@ app.get('/socket', (req, res) => {
       </div>
       <br>
       <div>
-        <button class="wsButton sendMessage">Send Message</button>
+        <input class="input button" value="Lalala">
+        <button class="button sendMessage">Send Message</button>
+      </div>
+      <div class="chatBox">
       </div>
     </div>
   `
@@ -140,7 +137,9 @@ app.get('/socket', (req, res) => {
       const connectButton = document.querySelector('.connect')
       const disconnectButton = document.querySelector('.disconnect')
       const sendMessageButton = document.querySelector('.sendMessage')
+      const input = document.querySelector('.input')
       const status = document.querySelector('.status')
+      const chat = document.querySelector('.chatBox')
 
       connectButton.addEventListener('click', () => { if (!connected) connectSocket() })
       disconnectButton.addEventListener('click', disconnectSocket)
@@ -156,11 +155,14 @@ app.get('/socket', (req, res) => {
           changeStatus(0)
           connected = true
           console.log('Connection open')
-          sock.send('test')
+          // sock.send('test')
         }
       
         sock.onmessage = function(e) {
           console.log('Message from server: ', e.data)
+          const record = document.createElement('div')
+          record.innerText = e.data
+          chat.appendChild(record)
           // sock.close()
         }
       
@@ -200,7 +202,7 @@ app.get('/socket', (req, res) => {
 
       function sendMessage () {
         if (connected && wsConnection) wsConnection.send('Hello from Client!');
-        if (connected && sock) sock.send('Lalala Tralala')
+        if (connected && sock) sock.send(input.value)
       }
 
       function changeStatus (st = 0) {
