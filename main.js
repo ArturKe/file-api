@@ -46,6 +46,7 @@ echo.on('connection', function(conn) {
 
   conn.on('close', function(ev) {
     console.log('close: ' + conn.id)
+    clients.forEach(client => client.connect.write(clientNames[conn.id]+ ' disconnected!'))
     clients = clients.filter(client => client.id !== conn.id)
     console.log(clients)
   })
@@ -123,6 +124,7 @@ app.get('/socket', (req, res) => {
       <div>
         <input class="input button" value="Lalala">
         <button class="button sendMessage">Send Message</button>
+        <button class="button clear">Clear</button>
       </div>
       <div class="chatBox">
       </div>
@@ -137,6 +139,7 @@ app.get('/socket', (req, res) => {
       const connectButton = document.querySelector('.connect')
       const disconnectButton = document.querySelector('.disconnect')
       const sendMessageButton = document.querySelector('.sendMessage')
+      const clearButton = document.querySelector('.clear')
       const input = document.querySelector('.input')
       const status = document.querySelector('.status')
       const chat = document.querySelector('.chatBox')
@@ -144,6 +147,7 @@ app.get('/socket', (req, res) => {
       connectButton.addEventListener('click', () => { if (!connected) connectSocket() })
       disconnectButton.addEventListener('click', disconnectSocket)
       sendMessageButton.addEventListener('click', sendMessage)
+      clearButton.addEventListener('click', clearChat)
 
       function disconnectSocket () {
         if (wsConnection) wsConnection.close()
@@ -162,8 +166,12 @@ app.get('/socket', (req, res) => {
           console.log('Message from server: ', e.data)
           const record = document.createElement('div')
           record.innerText = e.data
-          chat.appendChild(record)
-          // sock.close()
+          const firstChild = chat.children[0]
+          if (firstChild) {
+            chat.insertBefore(record, firstChild)
+          } else {
+            chat.appendChild(record)
+          }
         }
       
         sock.onclose = function() {
@@ -173,36 +181,12 @@ app.get('/socket', (req, res) => {
         }
       }
 
-      function wsConnect () {
-        wsConnection = new WebSocket("wss://${process.env.HOST || 'localhost'}")
-        changeStatus(2)
-        wsConnection.onopen = function() {
-          console.log("Соединение установлено.")
-          changeStatus(0)
-          connected = true
-        }
-
-        wsConnection.onclose = function(event) {
-          if (event.wasClean) {
-            console.log('Соединение закрыто чисто')
-            changeStatus(1)
-            connected = false
-          } else {
-            console.log('Обрыв соединения') // например, "убит" процесс сервера
-            changeStatus(1)
-            connected = false
-          }
-          console.log('Код: ' + event.code + ' причина: ' + event.reason)
-        }
-
-        wsConnection.onmessage = function(event) {
-          console.log('Получены данные: ' + event.data);
-        }
+      function sendMessage () {
+        if (connected && sock) sock.send(input.value)
       }
 
-      function sendMessage () {
-        if (connected && wsConnection) wsConnection.send('Hello from Client!');
-        if (connected && sock) sock.send(input.value)
+      function clearChat () {
+        chat.innerHTML = ''
       }
 
       function changeStatus (st = 0) {
@@ -349,11 +333,9 @@ function mainTemplate (content = '') {
         <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
       </head>
       <body style="margin: 0">
-          <div style="width:100%; padding: 0 15px; background:#527cb3; display: flex; flex-direction: row; gap: 15px;">
-            <div class="header">
-              <a href="/"><h3 style="color: #f0ffff">File Server</h3></a>
-              <a href="/socket"><h3 style="color: #f0ffff">Socket test</h3></a>
-            </div>
+          <div class="header">
+            <a href="/"><h3 style="color: #f0ffff">File Server</h3></a>
+            <a href="/socket"><h3 style="color: #f0ffff">Socket test</h3></a>
           </div>
           <div style="padding: 10px">${content}</div>
       </body>
