@@ -203,10 +203,21 @@ app.get('/path', (req, res) => {
 })
 
 let nn = await directoryRider()
-app.get('/list', async (req, res) => {
-  const rr = await directoryRider()
-  console.log(rr)
-  res.send(rr)
+app.get('/map', async (req, res) => {
+  res.json(
+    [{
+      url: 'https://file-server-u2kw.onrender.com/download?name=cow_edit_ver1.glb',
+      description: 'Cow1',
+      position: {x: -6, y: 0, z: -3},
+      scale: 1
+    },
+    {
+      url: 'https://file-server-u2kw.onrender.com/download?name=cow_edit_ver1.glb',
+      description: 'Cow2',
+      position: {x: -8, y: 0, z: -3},
+      scale: 1
+    }]
+  )
 })
 
 app.post('/upload', (req, res) => {
@@ -282,21 +293,6 @@ async function directoryRider () {
   return await fs.readdir(process.cwd() + '/files', (err, files) => {
     if (err) console.log(err)
   })
-  // fs.readdir(process.cwd() + '/public', async (err, files) => {
-  //   if (err) {
-  //     console.log(err)
-  //     return filesNameArray
-  //   } else {
-  //     // console.log("\nCurrent directory filenames:")
-  //     files.forEach(file => {
-  //       filesNameArray.push(file)
-  //       // console.log(file)
-  //     })
-  //     // console.log(filesNameArray)
-  //     return filesNameArray
-  //   }
-  // })
-  // return filesNameArray
 }
 
 function arrayToList (arr = []) {
