@@ -75,38 +75,13 @@ app.use(function(req, res, next) {
     return next();
   }
 })
-app.use(express.static('public'))
-
-// // Middelware, voor alle /api/* request
-// app.all('/api/*', function(req, res, next) 
-// {
-//   // Set respons header (geen idee of dit compleet is)
-//   res.header("Access-Control-Allow-Origin","*");
-//   res.header("Access-Control-Allow-Methods","GET,PUT,POST,DELETE,OPTIONS");
-//   res.header("Access-Control-Allow-Headers","X-Requested-With,Content-type,Accept,X-Access-Token,X-Key");
-
-//   // Set response contenttype
-//   res.contentType('application/json');
-
-//   next();
-// });
+app.use('/static',express.static('public'))
+app.use('/files',express.static('files'))
 
 console.log(await directoryRider())
 
 app.get("/help", (req, res) => {
 	res.send("Here is some HELP: " + process.env.URL_REMOTE)
-})
-
-app.get("/upload", async(req, res) => {
-  const bodyTemplate = `
-    <form method="post" enctype="multipart/form-data">
-      <p>Приветули!Выберите файл!</p>
-      <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
-      <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
-      <input class="button" type="submit" value="Upload">
-    </form>
-  `
-	res.send(mainTemplate(bodyTemplate + arrayToList(await directoryRider())))
 })
 
 app.get('/socket', (req, res) => {
@@ -201,11 +176,26 @@ app.get('/socket', (req, res) => {
   res.send(mainTemplate(bodyTemplate + scriptTemplate))
 })
 
+app.get("/upload", async(req, res) => {
+  const bodyTemplate = `
+    <form method="post" enctype="multipart/form-data">
+      <p>Приветули!Выберите файл!</p>
+      <p>Доступна загрузка файлов: PNG, JPG, GIF, SVG</p>
+      <input type="file" id="file" name="filename" multiple="multiple" placeholder="File">
+      <input class="button" type="submit" value="Upload">
+    </form>
+  `
+	res.send(mainTemplate(bodyTemplate + arrayToList(await directoryRider())))
+})
+
 app.get('/download', (req, res) => {
-  const path = process.cwd() + '/public/' + req.query.name
+  const path = process.cwd() + '/files/' + req.query.name
   console.log(path)
   // res.send(`<img style='max-height: 100%; max-width: 100%' src='/${req.query.name}'>`)
-  if (req.query.name) res.sendFile(process.cwd() + `/public/${req.query.name}`)
+  if (req.query.name) {
+    // res.sendFile(path)
+    res.download(path)
+  }
 })
 
 app.get('/path', (req, res) => {
@@ -256,7 +246,7 @@ app.post('/upload', (req, res) => {
     if (files.filename.size && ['image/jpeg', 'image/svg+xml', 'image/gif', 'image/png', 'model/gltf-binary', 'model/obj', 'application/octet-stream'].includes(files.filename.mimetype)) {
       const oldpath = files.filename.filepath
       console.log(oldpath)
-      const newpath = process.cwd() + '/public/' + files.filename.originalFilename
+      const newpath = process.cwd() + '/files/' + files.filename.originalFilename
       console.log(newpath)
 
       fs.copyFile(oldpath, newpath, 0, function (err) {
@@ -289,7 +279,7 @@ app.get('/*', async (req, res) => {
 
 async function directoryRider () {
   // let filesNameArray = []  
-  return await fs.readdir(process.cwd() + '/public', (err, files) => {
+  return await fs.readdir(process.cwd() + '/files', (err, files) => {
     if (err) console.log(err)
   })
   // fs.readdir(process.cwd() + '/public', async (err, files) => {
@@ -329,7 +319,7 @@ function mainTemplate (content = '') {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>File server</title>
-        <link href="/style.css" rel="stylesheet">
+        <link href="/static/style.css" rel="stylesheet">
         <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
       </head>
       <body style="margin: 0">
